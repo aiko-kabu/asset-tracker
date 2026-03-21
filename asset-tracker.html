@@ -105,9 +105,10 @@ html,body{height:100%;background:var(--bg-deep);color:var(--text-primary);font-f
 .perf-sub{font-size:11px;color:var(--text-muted);margin-top:2px;text-align:right}
 .perf-wrap{position:relative;width:100%;height:220px}
 
-.tab-row{display:flex;gap:4px;padding:10px 16px 0;background:var(--bg-mid)}
-.tbtn{flex:1;padding:7px 0;border-radius:8px;border:none;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;background:transparent;color:var(--text-muted);transition:all .15s}
+.tab-row{display:flex;gap:4px;padding:10px 16px 0;background:var(--bg-mid);align-items:center}
+.tbtn{flex:1;padding:7px 0;border-radius:8px;border:none;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;background:transparent;color:var(--text-muted);transition:all .15s;text-align:center}
 .tbtn.on{background:rgba(0,212,255,0.15);color:var(--accent-cyan)}
+#moLabel{flex:2;text-align:center;font-size:14px;font-weight:500;color:var(--accent-cyan)}
 
 .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--bg-mid);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-around;z-index:100;padding:0 4px;
   height:calc(var(--nav-h) + env(safe-area-inset-bottom));
@@ -437,17 +438,36 @@ function drawDaily(){
   // summary
   const last=mData[mData.length-1];
   const prev=mData[mData.length-2];
-  const first=mData[0];
+
+  // 単月比：前月末の最後のレコードを基準にする
+  const prevMoRecs=recs.filter(r=>{const d=new Date(r.date);
+    const pyr=mo===0?yr-1:yr, pmo=mo===0?11:mo-1;
+    return d.getFullYear()===pyr&&d.getMonth()===pmo;
+  }).sort((a,b)=>a.date.localeCompare(b.date));
+  const prevMoLast=prevMoRecs.length>0?prevMoRecs[prevMoRecs.length-1]:mData[0];
+
+  // 年初来：前年末の最後のレコードを基準にする
+  const prevYrRecs=recs.filter(r=>r.date.startsWith((yr-1)+'-')).sort((a,b)=>a.date.localeCompare(b.date));
+  const prevYrLast=prevYrRecs.length>0?prevYrRecs[prevYrRecs.length-1]:null;
+  // 前年末がなければ当年最初のレコードを使う
   const yrRecs=recs.filter(r=>r.date.startsWith(yr+'-')).sort((a,b)=>a.date.localeCompare(b.date));
-  const yrFirst=yrRecs[0];
+  const yrBase=prevYrLast||(yrRecs.length>0?yrRecs[0]:null);
 
   if(last){
     const dod=prev?last.amount-prev.amount:0;
     const dodP=prev&&prev.amount?dod/prev.amount*100:0;
-    const mCFs=first?getFlows(first.date,last.date):[];
-    const mD=first?dietz(first.amount,last.amount,new Date(first.date),new Date(last.date),mCFs):null;
-    const yCFs=yrFirst?getFlows(yrFirst.date,last.date):[];
-    const yD=yrFirst?dietz(yrFirst.amount,last.amount,new Date(yrFirst.date),new Date(last.date),yCFs):null;
+
+    // 単月比（前月末基準）
+    const mBase=prevMoLast;
+    const mCFs=mBase?getFlows(mBase.date,last.date):[];
+    const mD=mBase?dietz(mBase.amount,last.amount,new Date(mBase.date),new Date(last.date),mCFs):null;
+    const mAmt=mBase?last.amount-mBase.amount:null;
+
+    // 年初来（前年末基準）
+    const yCFs=yrBase?getFlows(yrBase.date,last.date):[];
+    const yD=yrBase?dietz(yrBase.amount,last.amount,new Date(yrBase.date),new Date(last.date),yCFs):null;
+    const yAmt=yrBase?last.amount-yrBase.amount:null;
+
     const lhm=hm[last.date]||{};
     const b=badgeHtml(lhm);
 
@@ -461,8 +481,8 @@ function drawDaily(){
         </div>
         <div class="sum-stats">
           <div class="stat-row"><span class="slbl">前日比</span><span class="${cl(dod)}">${sg(dod)}${f(dod)}円 (${ps(dodP)})</span></div>
-          <div class="stat-row"><span class="slbl">単月比</span><span class="${cl(mD??0)}">${mD!==null?ps(mD):'--'}</span></div>
-          <div class="stat-row"><span class="slbl">年初来</span><span class="${cl(yD??0)}">${yD!==null?ps(yD):'--'}</span></div>
+          <div class="stat-row"><span class="slbl">単月比</span><span class="${cl(mD??0)}">${mAmt!==null?sg(mAmt)+f(mAmt)+'円 ':''} ${mD!==null?'('+ps(mD)+')':'--'}</span></div>
+          <div class="stat-row"><span class="slbl">年初来</span><span class="${cl(yD??0)}">${yAmt!==null?sg(yAmt)+f(yAmt)+'円 ':''} ${yD!==null?'('+ps(yD)+')':'--'}</span></div>
         </div>
       </div>`;
   } else {
