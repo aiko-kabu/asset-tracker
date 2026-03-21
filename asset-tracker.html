@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>資産トラッカー</title>
+
+<!-- PWA -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="資産トラッカー">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d1b3e">
+<meta name="description" content="資産推移・入出金管理アプリ">
+
+<!-- アイコン（SVGをインラインでBase64化） -->
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgMTgwIj48cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgcng9IjQwIiBmaWxsPSIjMGQxYjNlIi8+PHBvbHlsaW5lIHBvaW50cz0iMjAsOTAgNTAsMTIwIDkwLDUwIDEzMCw4MCAxNjAsNDAiIHN0cm9rZT0iIzAwZDRmZiIgc3Ryb2tlLXdpZHRoPSIxMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PC9zdmc+">
+
+<!-- Web App Manifest (inline) -->
+<script>
+(function(){
+  const m={
+    name:"資産トラッカー",
+    short_name:"資産トラッカー",
+    description:"資産推移・入出金管理アプリ",
+    start_url:"./",
+    display:"standalone",
+    background_color:"#0d1b3e",
+    theme_color:"#0d1b3e",
+    orientation:"portrait",
+    icons:[{
+      src:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgMTgwIj48cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgcng9IjQwIiBmaWxsPSIjMGQxYjNlIi8+PHBvbHlsaW5lIHBvaW50cz0iMjAsOTAgNTAsMTIwIDkwLDUwIDEzMCw4MCAxNjAsNDAiIHN0cm9rZT0iIzAwZDRmZiIgc3Ryb2tlLXdpZHRoPSIxMiIgZmlsbD0ibm9uZSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PC9zdmc+",
+      sizes:"180x180",type:"image/svg+xml"
+    }]
+  };
+  const blob=new Blob([JSON.stringify(m)],{type:'application/manifest+json'});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('link');
+  link.rel='manifest';link.href=url;
+  document.currentScript.after(link);
+})();
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-deep:#0d1b3e;--bg-mid:#1a2f5e;--bg-card:#1e3a70;
+  --bg-row:rgba(255,255,255,0.05);
+  --accent-cyan:#00d4ff;--accent-teal:#00bfa0;
+  --text-primary:#ffffff;--text-secondary:rgba(255,255,255,0.75);--text-muted:rgba(255,255,255,0.45);
+  --positive:#4dd8a0;--negative:#ff6b7a;
+  --border:rgba(255,255,255,0.1);
+  --header-h:56px;--nav-h:60px;
+}
+html,body{height:100%;background:var(--bg-deep);color:var(--text-primary);font-family:'Noto Sans JP','Inter',sans-serif;font-size:14px;line-height:1.5;overflow:hidden}
+#app{display:flex;flex-direction:column;height:100dvh;max-width:430px;margin:0 auto;background:var(--bg-deep);
+  padding-top:env(safe-area-inset-top);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+
+.header{height:var(--header-h);background:var(--bg-mid);display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex-shrink:0;border-bottom:1px solid var(--border);z-index:10}
+.header-title{font-size:16px;font-weight:500;letter-spacing:.05em}
+.hbtn{background:none;border:none;color:var(--text-secondary);cursor:pointer;padding:6px;border-radius:6px;display:flex;align-items:center}
+.hbtn:hover{color:var(--accent-cyan)}
+
+.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.content::-webkit-scrollbar{width:0}
+.view{display:none;padding:0 0 calc(80px + env(safe-area-inset-bottom))}
+.view.active{display:block}
+
+.chart-section{background:linear-gradient(180deg,var(--bg-mid) 0%,var(--bg-deep) 100%);padding:8px 16px 14px}
+.chart-label{font-size:10px;color:var(--text-muted);margin-bottom:2px}
+.chart-wrap{position:relative;width:100%;height:175px}
+
+.asset-summary{background:var(--bg-mid);padding:12px 16px;border-top:1px solid var(--border)}
+.sum-top{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start}
+.sum-date{font-size:11px;color:var(--text-muted);margin-bottom:1px}
+.sum-lbl{font-size:11px;color:var(--text-muted)}
+.sum-val{font-size:24px;font-weight:700;letter-spacing:-.02em}
+.sum-val span{font-size:12px;font-weight:400;margin-left:3px;color:var(--text-secondary)}
+.sum-stats{display:flex;flex-direction:column;gap:4px;align-items:flex-end;font-size:12px}
+.stat-row{display:flex;gap:8px;align-items:center}
+.slbl{color:var(--text-muted);font-size:11px}
+.badges{display:flex;gap:5px;margin-top:4px}
+.badge{font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.04em}
+.mh{background:#5c4e10;color:#ffd84d}
+.yh{background:#5c3310;color:#ffb347}
+.pos{color:var(--positive)}
+.neg{color:var(--negative)}
+
+.data-list{padding:6px 16px 0}
+.row{display:flex;align-items:center;padding:9px 11px;margin-bottom:4px;background:var(--bg-row);border-radius:8px;border:1px solid var(--border);gap:4px}
+.row.cf-row{background:rgba(0,212,255,0.06);border-color:rgba(0,212,255,0.25)}
+.rdate{font-size:12px;color:var(--text-secondary);min-width:72px;flex-shrink:0}
+.rbadges{display:flex;gap:3px;flex-shrink:0}
+.rval{font-size:13px;font-weight:500;flex:1;text-align:right}
+.rch{font-size:11px;min-width:100px;text-align:right;flex-shrink:0}
+.rcf{font-size:12px;font-weight:600;color:var(--accent-cyan);flex:1;text-align:right}
+
+.perf-sec{padding:14px 16px}
+.perf-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.perf-ttl{font-size:12px;color:var(--text-muted);letter-spacing:.06em}
+.perf-ret{font-size:22px;font-weight:700}
+.perf-sub{font-size:11px;color:var(--text-muted);margin-top:2px;text-align:right}
+.perf-wrap{position:relative;width:100%;height:220px}
+
+.tab-row{display:flex;gap:4px;padding:10px 16px 0;background:var(--bg-mid)}
+.tbtn{flex:1;padding:7px 0;border-radius:8px;border:none;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;background:transparent;color:var(--text-muted);transition:all .15s}
+.tbtn.on{background:rgba(0,212,255,0.15);color:var(--accent-cyan)}
+
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--bg-mid);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-around;z-index:100;padding:0 4px;
+  height:calc(var(--nav-h) + env(safe-area-inset-bottom));
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.nbtn{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:var(--text-muted);cursor:pointer;padding:8px 10px;border-radius:8px;font-size:10px;font-family:inherit;transition:color .15s}
+.nbtn svg{width:20px;height:20px}
+.nbtn.on{color:var(--accent-cyan)}
+
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200;align-items:flex-end;justify-content:center}
+.overlay.open{display:flex}
+.modal{width:100%;max-width:430px;background:var(--bg-mid);border-radius:16px 16px 0 0;padding:20px 20px 36px;border:1px solid var(--border);border-bottom:none}
+.modal-ttl{font-size:15px;font-weight:500;margin-bottom:14px}
+.modal label{display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px}
+.modal input,.modal select{width:100%;background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:15px;padding:10px 12px;margin-bottom:12px;font-family:inherit;outline:none;-webkit-appearance:none}
+.modal input:focus{border-color:var(--accent-cyan)}
+.type-row{display:flex;gap:6px;margin-bottom:12px}
+.ttype{flex:1;padding:9px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s}
+.ttype.tin{background:rgba(0,191,160,0.2);border-color:var(--accent-teal);color:var(--accent-teal)}
+.ttype.tout{background:rgba(255,107,122,0.2);border-color:var(--negative);color:var(--negative)}
+.act-row{display:flex;gap:10px}
+.btn{flex:1;padding:12px;border-radius:10px;border:none;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit}
+.btn:active{opacity:.7}
+.bpri{background:var(--accent-cyan);color:#001a30}
+.bsec{background:rgba(255,255,255,0.1);color:var(--text-secondary)}
+
+.cf-list{padding:6px 16px 0}
+.cf-item{display:flex;align-items:center;padding:9px 11px;margin-bottom:4px;background:rgba(0,212,255,0.06);border-radius:8px;border:1px solid rgba(0,212,255,0.2);gap:8px}
+.cf-date{font-size:12px;color:var(--text-secondary);min-width:72px}
+.cf-type{font-size:11px;padding:2px 8px;border-radius:4px;font-weight:600}
+.ct-in{background:rgba(0,191,160,0.2);color:var(--accent-teal)}
+.ct-out{background:rgba(255,107,122,0.2);color:var(--negative)}
+.cf-amt{flex:1;text-align:right;font-size:13px;font-weight:500}
+.cf-del{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:4px;font-size:16px;line-height:1}
+.empty{text-align:center;color:var(--text-muted);padding:32px 16px;font-size:13px}
+.slabel{font-size:11px;color:var(--text-muted);letter-spacing:.06em;padding:10px 16px 4px}
+
+.info-box{margin:14px 16px 0;background:var(--bg-row);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:12px;color:var(--text-secondary);line-height:1.9}
+</style>
+</head>
+<body>
+<div id="app">
+
+<header class="header">
+  <button class="hbtn">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor"><rect y="2" width="18" height="2" rx="1"/><rect y="8" width="18" height="2" rx="1"/><rect y="14" width="18" height="2" rx="1"/></svg>
+  </button>
+  <div class="header-title" id="hTitle">日次推移</div>
+  <button class="hbtn" id="addBtn">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor"><path d="M9 2a1 1 0 0 1 1 1v5h5a1 1 0 0 1 0 2h-5v5a1 1 0 0 1-2 0v-5H3a1 1 0 0 1 0-2h5V3a1 1 0 0 1 1-1z"/></svg>
+  </button>
+</header>
+
+<div class="content">
+
+  <div class="view active" id="view-daily">
+    <div class="tab-row">
+      <button class="tbtn on" onclick="switchMonth(-1)">◀</button>
+      <div class="tbtn on" id="moLabel" style="pointer-events:none;font-size:13px"></div>
+      <button class="tbtn on" onclick="switchMonth(1)">▶</button>
+    </div>
+    <div class="chart-section">
+      <div class="chart-label">（万円）<span style="float:right">資産額</span></div>
+      <div class="chart-wrap"><canvas id="cDaily"></canvas></div>
+    </div>
+    <div class="asset-summary" id="sumDaily"></div>
+    <div class="data-list" id="listDaily"></div>
+  </div>
+
+  <div class="view" id="view-monthly">
+    <div class="chart-section" style="padding-top:14px">
+      <div class="chart-label">（万円）</div>
+      <div class="chart-wrap"><canvas id="cMonthly"></canvas></div>
+    </div>
+    <div class="asset-summary" id="sumMonthly"></div>
+    <div class="data-list" id="listMonthly"></div>
+  </div>
+
+  <div class="view" id="view-yearly">
+    <div class="perf-sec">
+      <div class="perf-hdr">
+        <div>
+          <div class="perf-ttl">パフォーマンス（修正ディーツ法）</div>
+        </div>
+        <div>
+          <div class="perf-ret" id="yRet">--</div>
+          <div class="perf-sub" id="yDate"></div>
+        </div>
+      </div>
+      <div class="perf-wrap"><canvas id="cYearly"></canvas></div>
+    </div>
+    <div class="data-list" id="listYearly"></div>
+  </div>
+
+  <div class="view" id="view-cashflow">
+    <div style="padding:14px 16px 0">
+      <button onclick="openCF()" style="width:100%;padding:12px;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);border-radius:10px;color:var(--accent-cyan);font-size:14px;font-weight:500;cursor:pointer;font-family:inherit">
+        + 入出金を記録
+      </button>
+    </div>
+    <div class="slabel">入出金履歴</div>
+    <div class="cf-list" id="cfList"></div>
+    <div class="info-box">
+      <strong style="color:var(--text-primary)">入力のルール</strong><br>
+      「入出金日」は、その資産額に入出金が反映される前日を指定してください。<br>
+      例：10/29(木) に入金100万円 → 10/30(金) の資産額に反映 → 入出金日 = 10/29
+    </div>
+  </div>
+
+  <div class="view" id="view-settings">
+    <div style="padding:20px 16px">
+      <div style="color:var(--text-muted);font-size:12px;margin-bottom:12px">データ管理</div>
+      <div style="background:var(--bg-row);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <button onclick="clearAll()" style="width:100%;padding:14px 16px;background:none;border:none;color:var(--negative);font-size:14px;font-family:inherit;cursor:pointer;text-align:left">全データを削除</button>
+      </div>
+      <div class="info-box">
+        <strong style="color:var(--text-primary)">修正ディーツ法について</strong><br>
+        入出金の影響を除いた純粋な投資収益率を計算します。<br><br>
+        R = (EMV − BMV − CF合計) ÷ (BMV + Σ(CF × 期間加重))<br><br>
+        月の途中で入出金があった場合でも、その資金が運用に回っていた期間の長さを重み付けして正確なリターンを算出します。
+      </div>
+      <div style="margin-top:14px;color:var(--text-muted);font-size:11px">資産トラッカー v2.0</div>
+    </div>
+  </div>
+
+</div>
+
+<nav class="bottom-nav">
+  <button class="nbtn on" data-v="daily" onclick="goView('daily',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>日次
+  </button>
+  <button class="nbtn" data-v="monthly" onclick="goView('monthly',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>月次
+  </button>
+  <button class="nbtn" data-v="yearly" onclick="goView('yearly',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>年次
+  </button>
+  <button class="nbtn" data-v="cashflow" onclick="goView('cashflow',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>入出金
+  </button>
+  <button class="nbtn" data-v="settings" onclick="goView('settings',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>設定
+  </button>
+</nav>
+</div>
+
+<!-- 資産記録モーダル -->
+<div class="overlay" id="modAsset">
+  <div class="modal">
+    <div class="modal-ttl">資産額を記録</div>
+    <label>日付</label>
+    <input type="date" id="iDate">
+    <label>資産額（円）</label>
+    <input type="number" id="iAmt" placeholder="例: 1500000">
+    <div class="act-row">
+      <button class="btn bsec" onclick="closeM('modAsset')">キャンセル</button>
+      <button class="btn bpri" onclick="saveAsset()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 入出金モーダル -->
+<div class="overlay" id="modCF">
+  <div class="modal">
+    <div class="modal-ttl">入出金を記録</div>
+    <label>日付（資産額に反映される前日）</label>
+    <input type="date" id="cfDate">
+    <label>金額（円）</label>
+    <input type="number" id="cfAmt" placeholder="例: 1000000">
+    <div class="type-row">
+      <button class="ttype tin" id="tbIn" onclick="setCT('in')">入金</button>
+      <button class="ttype" id="tbOut" onclick="setCT('out')">出金</button>
+    </div>
+    <div class="act-row">
+      <button class="btn bsec" onclick="closeM('modCF')">キャンセル</button>
+      <button class="btn bpri" onclick="saveCF()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== DATA =====
+let recs = JSON.parse(localStorage.getItem('assetRecs') || '[]');
+let cfs  = JSON.parse(localStorage.getItem('assetCFs')  || '[]');
+let curMo = new Date().getMonth();
+let curYr = new Date().getFullYear();
+let curV  = 'daily';
+let cfT   = 'in';
+let chDaily, chMonthly, chYearly;
+const DN = ['日','月','火','水','木','金','土'];
+
+// ===== SEED =====
+function seed() {
+  if (recs.length > 0) return;
+  cfs = [
+    {date:'2025-01-05',amount:200000,type:'in'},
+    {date:'2025-04-10',amount:100000,type:'in'},
+    {date:'2025-07-15',amount:50000, type:'out'},
+    {date:'2025-10-20',amount:150000,type:'in'},
+  ];
+  let v = 1500000;
+  for (let m=0;m<12;m++){
+    const days = new Date(2025,m+1,0).getDate();
+    for (let d=1;d<=days;d++){
+      const dt = new Date(2025,m,d);
+      if (dt.getDay()===0||dt.getDay()===6) continue;
+      if (dt > new Date('2025-12-31')) break;
+      const ds = dt.toISOString().slice(0,10);
+      const prev = new Date(dt.getTime()-86400000).toISOString().slice(0,10);
+      cfs.filter(c=>c.date===prev).forEach(c=>{v+=c.type==='in'?c.amount:-c.amount});
+      v += (Math.random()-0.46)*11000;
+      if(v<1100000)v=1100000;
+      recs.push({date:ds,amount:Math.round(v)});
+    }
+  }
+  persist();
+}
+function persist(){
+  localStorage.setItem('assetRecs',JSON.stringify(recs));
+  localStorage.setItem('assetCFs', JSON.stringify(cfs));
+}
+
+// ===== HIGH MARKS =====
+function getHighMarks(){
+  const res={};
+  const sorted=[...recs].sort((a,b)=>a.date.localeCompare(b.date));
+  const mMax={},yMax={};
+  sorted.forEach(r=>{
+    const ym=r.date.slice(0,7),yr=r.date.slice(0,4);
+    const pm=mMax[ym]||0, py=yMax[yr]||0;
+    res[r.date]={isMH:r.amount>pm, isYH:r.amount>py};
+    mMax[ym]=Math.max(pm,r.amount);
+    yMax[yr]=Math.max(py,r.amount);
+  });
+  return res;
+}
+
+// ===== MODIFIED DIETZ =====
+function dietz(bmv,emv,startDate,endDate,flows){
+  const T=endDate-startDate;
+  if(T<=0||bmv===null||bmv===0) return null;
+  let netCF=0,wCF=0;
+  flows.forEach(f=>{
+    const w=Math.max(0,Math.min(1,(T-(f.date-startDate))/T));
+    netCF+=f.signed;
+    wCF+=f.signed*w;
+  });
+  const denom=bmv+wCF;
+  if(denom===0) return null;
+  return (emv-bmv-netCF)/denom*100;
+}
+
+// cashflows effective the day AFTER their recorded date
+function getFlows(startStr,endStr){
+  const s=new Date(startStr),e=new Date(endStr);
+  return cfs.map(c=>{
+    const eff=new Date(new Date(c.date).getTime()+86400000);
+    if(eff>s && eff<=e) return {date:eff, signed:c.type==='in'?c.amount:-c.amount};
+    return null;
+  }).filter(Boolean);
+}
+
+// ===== HELPERS =====
+const f=n=>n.toLocaleString('ja-JP');
+const ds=s=>{const d=new Date(s);return(d.getMonth()+1)+'/'+d.getDate()+'('+DN[d.getDay()]+')'};
+const ps=n=>(n>=0?'+':'')+n.toFixed(2)+'%';
+const cl=n=>n>=0?'pos':'neg';
+const sg=n=>n>=0?'+':'';
+function badgeHtml(hm){
+  return [hm.isMH?'<span class="badge mh">MH</span>':'',hm.isYH?'<span class="badge yh">YH</span>':''].join('');
+}
+
+// ===== VIEW =====
+function goView(v,btn){
+  curV=v;
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.nbtn').forEach(x=>x.classList.remove('on'));
+  document.getElementById('view-'+v).classList.add('active');
+  btn.classList.add('on');
+  const t={daily:'日次推移',monthly:'月次推移',yearly:'年次パフォーマンス',cashflow:'入出金',settings:'設定'};
+  document.getElementById('hTitle').textContent=t[v];
+  document.getElementById('addBtn').style.display=(v==='cashflow'||v==='settings')?'none':'';
+  draw(v);
+}
+function switchMonth(d){
+  curMo+=d;
+  if(curMo>11){curMo=0;curYr++;}
+  if(curMo<0){curMo=11;curYr--;}
+  draw('daily');
+}
+function draw(v){
+  if(v==='daily') drawDaily();
+  else if(v==='monthly') drawMonthly();
+  else if(v==='yearly') drawYearly();
+  else if(v==='cashflow') drawCF();
+}
+
+// ===== DAILY =====
+function drawDaily(){
+  const yr=curYr,mo=curMo;
+  document.getElementById('moLabel').textContent=yr+'/'+(mo+1);
+
+  const mData=recs.filter(r=>{const d=new Date(r.date);return d.getFullYear()===yr&&d.getMonth()===mo;})
+    .sort((a,b)=>a.date.localeCompare(b.date));
+
+  const hm=getHighMarks();
+
+  // chart
+  if(chDaily) chDaily.destroy();
+  const ctx=document.getElementById('cDaily').getContext('2d');
+  const g=ctx.createLinearGradient(0,0,0,175);
+  g.addColorStop(0,'rgba(0,212,255,0.35)');g.addColorStop(1,'rgba(0,212,255,0)');
+  chDaily=new Chart(ctx,{
+    type:'line',
+    data:{labels:mData.map(r=>parseInt(r.date.slice(8))),
+      datasets:[{data:mData.map(r=>+(r.amount/10000).toFixed(2)),
+        borderColor:'#00d4ff',backgroundColor:g,borderWidth:2,
+        pointRadius:mData.length>15?0:3,pointHoverRadius:5,pointBackgroundColor:'#00d4ff',fill:true,tension:0.3}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y+'万円'}}},
+      scales:{
+        x:{ticks:{color:'rgba(255,255,255,0.4)',font:{size:10},maxTicksLimit:10},grid:{color:'rgba(255,255,255,0.05)'},border:{display:false}},
+        y:{ticks:{color:'rgba(255,255,255,0.4)',font:{size:10}},grid:{color:'rgba(255,255,255,0.05)'},border:{display:false}}
+      }}
+  });
+
+  // summary
+  const last=mData[mData.length-1];
+  const prev=mData[mData.length-2];
+  const first=mData[0];
+  const yrRecs=recs.filter(r=>r.date.startsWith(yr+'-')).sort((a,b)=>a.date.localeCompare(b.date));
+  const yrFirst=yrRecs[0];
+
+  if(last){
+    const dod=prev?last.amount-prev.amount:0;
+    const dodP=prev&&prev.amount?dod/prev.amount*100:0;
+    const mCFs=first?getFlows(first.date,last.date):[];
+    const mD=first?dietz(first.amount,last.amount,new Date(first.date),new Date(last.date),mCFs):null;
+    const yCFs=yrFirst?getFlows(yrFirst.date,last.date):[];
+    const yD=yrFirst?dietz(yrFirst.amount,last.amount,new Date(yrFirst.date),new Date(last.date),yCFs):null;
+    const lhm=hm[last.date]||{};
+    const b=badgeHtml(lhm);
+
+    document.getElementById('sumDaily').innerHTML=`
+      <div class="sum-top">
+        <div>
+          <div class="sum-date">${ds(last.date)}</div>
+          <div class="sum-lbl">資産額</div>
+          <div class="sum-val">${f(last.amount)}<span>円</span></div>
+          ${b?`<div class="badges">${b}</div>`:''}
+        </div>
+        <div class="sum-stats">
+          <div class="stat-row"><span class="slbl">前日比</span><span class="${cl(dod)}">${sg(dod)}${f(dod)}円 (${ps(dodP)})</span></div>
+          <div class="stat-row"><span class="slbl">単月比</span><span class="${cl(mD??0)}">${mD!==null?ps(mD):'--'}</span></div>
+          <div class="stat-row"><span class="slbl">年初来</span><span class="${cl(yD??0)}">${yD!==null?ps(yD):'--'}</span></div>
+        </div>
+      </div>`;
+  } else {
+    document.getElementById('sumDaily').innerHTML='<div class="empty" style="padding:10px 0">この月のデータがありません</div>';
+  }
+
+  // list
+  const rev=[...mData].reverse();
+  const mCFrecs=cfs.filter(c=>{const d=new Date(c.date);return d.getFullYear()===yr&&d.getMonth()===mo;});
+  document.getElementById('listDaily').innerHTML=rev.length===0
+    ?'<div class="empty">データを追加してください</div>'
+    :rev.map((r,i)=>{
+      const p2=rev[i+1];
+      const ch=p2?r.amount-p2.amount:null;
+      const pc=ch!==null&&p2.amount?ch/p2.amount*100:null;
+      const rhm=hm[r.date]||{};
+      const b=badgeHtml(rhm);
+      const dayCF=mCFrecs.filter(c=>c.date===r.date);
+      const cfHtml=dayCF.map(c=>`
+        <div class="row cf-row">
+          <span class="rdate">${ds(c.date)}</span>
+          <span class="rcf">${c.type==='in'?'+':'-'}${f(c.amount)}円</span>
+          <span class="rch" style="color:var(--accent-cyan)">${c.type==='in'?'入金':'出金'}</span>
+        </div>`).join('');
+      return cfHtml+`<div class="row">
+        <span class="rdate">${ds(r.date)}</span>
+        ${b?`<span class="rbadges">${b}</span>`:''}
+        <span class="rval">${f(r.amount)}円</span>
+        ${ch!==null?`<span class="rch ${cl(ch)}">${sg(ch)}${f(ch)}円 (${pc>=0?'+':''}${pc.toFixed(1)}%)</span>`:'<span class="rch" style="color:var(--text-muted)">--</span>'}
+      </div>`;
+    }).join('');
+}
+
+// ===== MONTHLY =====
+function drawMonthly(){
+  const yr=curYr;
+  const mo=[];
+  for(let m=0;m<12;m++){
+    const rs=recs.filter(r=>{const d=new Date(r.date);return d.getFullYear()===yr&&d.getMonth()===m;}).sort((a,b)=>a.date.localeCompare(b.date));
+    if(rs.length>0) mo.push({m,first:rs[0],last:rs[rs.length-1]});
+  }
+  const hm=getHighMarks();
+
+  if(chMonthly) chMonthly.destroy();
+  const ctx=document.getElementById('cMonthly').getContext('2d');
+  const g=ctx.createLinearGradient(0,0,0,175);
+  g.addColorStop(0,'rgba(0,191,160,0.4)');g.addColorStop(1,'rgba(0,191,160,0)');
+  chMonthly=new Chart(ctx,{
+    type:'line',
+    data:{labels:mo.map(m=>(m.m+1)+'月'),
+      datasets:[{data:mo.map(m=>+(m.last.amount/10000).toFixed(2)),
+        borderColor:'#00bfa0',backgroundColor:g,borderWidth:2.5,
+        pointRadius:4,pointBackgroundColor:'#00bfa0',fill:true,tension:0.3}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y+'万円'}}},
+      scales:{
+        x:{ticks:{color:'rgba(255,255,255,0.45)',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'},border:{display:false}},
+        y:{ticks:{color:'rgba(255,255,255,0.45)',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'},border:{display:false}}
+      }}
+  });
+
+  const last=mo[mo.length-1],first=mo[0];
+  if(last){
+    const yCFs=first?getFlows(first.first.date,last.last.date):[];
+    const yD=first?dietz(first.first.amount,last.last.amount,new Date(first.first.date),new Date(last.last.date),yCFs):null;
+    const lhm=hm[last.last.date]||{};
+    const b=badgeHtml(lhm);
+    document.getElementById('sumMonthly').innerHTML=`
+      <div class="sum-top">
+        <div>
+          <div class="sum-date">${yr}年${last.m+1}月末</div>
+          <div class="sum-lbl">資産額</div>
+          <div class="sum-val">${f(last.last.amount)}<span>円</span></div>
+          ${b?`<div class="badges">${b}</div>`:''}
+        </div>
+        <div class="sum-stats">
+          <div class="stat-row"><span class="slbl">年初来（修正ディーツ）</span><span class="${cl(yD??0)}">${yD!==null?ps(yD):'--'}</span></div>
+        </div>
+      </div>`;
+  } else {
+    document.getElementById('sumMonthly').innerHTML='<div class="empty" style="padding:10px">データがありません</div>';
+  }
+
+  document.getElementById('listMonthly').innerHTML=[...mo].reverse().map(m=>{
+    const mCFs=getFlows(m.first.date,m.last.date);
+    const mD=dietz(m.first.amount,m.last.amount,new Date(m.first.date),new Date(m.last.date),mCFs);
+    const mhm=hm[m.last.date]||{};
+    const b=badgeHtml(mhm);
+    const hasCF=cfs.some(c=>{const d=new Date(c.date);return d.getFullYear()===yr&&d.getMonth()===m.m;});
+    return `<div class="row">
+      <span class="rdate">${yr}/${String(m.m+1).padStart(2,'0')}</span>
+      ${b?`<span class="rbadges">${b}</span>`:''}
+      ${hasCF?'<span class="badge" style="background:rgba(0,212,255,0.15);color:var(--accent-cyan);font-size:10px">CF</span>':''}
+      <span class="rval">${f(m.last.amount)}円</span>
+      <span class="rch ${cl(mD??0)}">${mD!==null?ps(mD):'--'}</span>
+    </div>`;
+  }).join('')||'<div class="empty">データがありません</div>';
+}
+
+// ===== YEARLY =====
+function drawYearly(){
+  const yr=curYr;
+  const mo=[];
+  for(let m=0;m<12;m++){
+    const rs=recs.filter(r=>{const d=new Date(r.date);return d.getFullYear()===yr&&d.getMonth()===m;}).sort((a,b)=>a.date.localeCompare(b.date));
+    mo.push(rs.length>0?{m,first:rs[0],last:rs[rs.length-1]}:null);
+  }
+  const valid=mo.filter(Boolean);
+  const yFirst=valid[0],yLast=valid[valid.length-1];
+  let totalD=null;
+  if(yFirst&&yLast){
+    const yCFs=getFlows(yFirst.first.date,yLast.last.date);
+    totalD=dietz(yFirst.first.amount,yLast.last.amount,new Date(yFirst.first.date),new Date(yLast.last.date),yCFs);
+  }
+  const rEl=document.getElementById('yRet');
+  rEl.textContent=totalD!==null?ps(totalD):'--';
+  rEl.className='perf-ret '+(totalD!==null?cl(totalD):'');
+  document.getElementById('yDate').textContent=`※${yr}/12/31現在`;
+
+  const vals=mo.map(m=>{
+    if(!m) return null;
+    const mCFs=getFlows(m.first.date,m.last.date);
+    const r=dietz(m.first.amount,m.last.amount,new Date(m.first.date),new Date(m.last.date),mCFs);
+    return r!==null?+r.toFixed(2):null;
+  });
+
+  if(chYearly) chYearly.destroy();
+  const ctx=document.getElementById('cYearly').getContext('2d');
+  chYearly=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
+      datasets:[{data:vals,
+        backgroundColor:vals.map(v=>v===null?'transparent':v>=0?'rgba(0,212,255,0.7)':'rgba(255,107,122,0.7)'),
+        borderColor:vals.map(v=>v===null?'transparent':v>=0?'#00d4ff':'#ff6b7a'),
+        borderWidth:1,borderRadius:3,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>ps(c.parsed.y)}}},
+      scales:{
+        x:{ticks:{color:'rgba(255,255,255,0.5)',font:{size:10},autoSkip:false},grid:{display:false},border:{display:false}},
+        y:{ticks:{color:'rgba(255,255,255,0.5)',font:{size:10},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'},border:{display:false}}
+      }}
+  });
+
+  document.getElementById('listYearly').innerHTML=mo.map((m,i)=>{
+    if(!m) return '';
+    const mCFs=getFlows(m.first.date,m.last.date);
+    const r=dietz(m.first.amount,m.last.amount,new Date(m.first.date),new Date(m.last.date),mCFs);
+    const hasCF=cfs.some(c=>{const d=new Date(c.date);return d.getFullYear()===yr&&d.getMonth()===i;});
+    return `<div class="row">
+      <span class="rdate">${yr}/${String(i+1).padStart(2,'0')}</span>
+      ${hasCF?'<span class="badge" style="background:rgba(0,212,255,0.15);color:var(--accent-cyan);font-size:10px">CF</span>':''}
+      <span class="rval">${f(m.last.amount)}円</span>
+      <span class="rch ${cl(r??0)}">${r!==null?ps(r):'--'}</span>
+    </div>`;
+  }).reverse().join('')||'<div class="empty">データがありません</div>';
+}
+
+// ===== CASHFLOW =====
+function drawCF(){
+  const sorted=[...cfs].sort((a,b)=>b.date.localeCompare(a.date));
+  document.getElementById('cfList').innerHTML=sorted.length===0
+    ?'<div class="empty">入出金データがありません</div>'
+    :sorted.map((c,i)=>`
+      <div class="cf-item">
+        <span class="cf-date">${ds(c.date)}</span>
+        <span class="cf-type ${c.type==='in'?'ct-in':'ct-out'}">${c.type==='in'?'入金':'出金'}</span>
+        <span class="cf-amt">${c.type==='in'?'+':'-'}${f(c.amount)}円</span>
+        <button class="cf-del" onclick="delCF(${i})">×</button>
+      </div>`).join('');
+}
+
+// ===== MODALS =====
+document.getElementById('addBtn').onclick=()=>{
+  document.getElementById('iDate').value=new Date().toISOString().slice(0,10);
+  document.getElementById('iAmt').value='';
+  document.getElementById('modAsset').classList.add('open');
+};
+function openCF(){
+  document.getElementById('cfDate').value=new Date().toISOString().slice(0,10);
+  document.getElementById('cfAmt').value='';
+  setCT('in');
+  document.getElementById('modCF').classList.add('open');
+}
+function closeM(id){document.getElementById(id).classList.remove('open');}
+['modAsset','modCF'].forEach(id=>{
+  document.getElementById(id).onclick=e=>{if(e.target.id===id)closeM(id);};
+});
+function setCT(t){
+  cfT=t;
+  document.getElementById('tbIn').className='ttype'+(t==='in'?' tin':'');
+  document.getElementById('tbOut').className='ttype'+(t==='out'?' tout':'');
+}
+function saveAsset(){
+  const date=document.getElementById('iDate').value;
+  const amt=parseInt(document.getElementById('iAmt').value);
+  if(!date||isNaN(amt)||amt<=0){alert('日付と金額を正しく入力してください');return;}
+  const idx=recs.findIndex(r=>r.date===date);
+  if(idx>=0){if(!confirm('この日のデータを上書きしますか？'))return;recs[idx].amount=amt;}
+  else recs.push({date,amount:amt});
+  recs.sort((a,b)=>a.date.localeCompare(b.date));
+  persist();closeM('modAsset');draw(curV);
+}
+function saveCF(){
+  const date=document.getElementById('cfDate').value;
+  const amt=parseInt(document.getElementById('cfAmt').value);
+  if(!date||isNaN(amt)||amt<=0){alert('日付と金額を正しく入力してください');return;}
+  cfs.push({date,amount:amt,type:cfT});
+  cfs.sort((a,b)=>a.date.localeCompare(b.date));
+  persist();closeM('modCF');draw(curV);
+}
+function delCF(sortedIdx){
+  const sorted=[...cfs].sort((a,b)=>b.date.localeCompare(a.date));
+  const c=sorted[sortedIdx];
+  if(!confirm(`${ds(c.date)} の${c.type==='in'?'入金':'出金'}（${f(c.amount)}円）を削除しますか？`))return;
+  cfs.splice(cfs.indexOf(c),1);
+  persist();drawCF();
+}
+function clearAll(){
+  if(!confirm('全データを削除しますか？'))return;
+  recs=[];cfs=[];
+  localStorage.removeItem('assetRecs');localStorage.removeItem('assetCFs');
+  draw(curV);
+}
+
+// ===== INIT =====
+seed();
+drawDaily();
+
+// ===== SERVICE WORKER (PWAオフライン対応) =====
+if('serviceWorker' in navigator){
+  const swCode=`
+const CACHE='asset-tracker-v1';
+const URLS=[location.href];
+self.addEventListener('install',e=>{
+  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(URLS)));
+  self.skipWaiting();
+});
+self.addEventListener('activate',e=>{
+  e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));
+  self.clients.claim();
+});
+self.addEventListener('fetch',e=>{
+  e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).catch(()=>caches.match(e.request))));
+});
+  `;
+  const blob=new Blob([swCode],{type:'application/javascript'});
+  const url=URL.createObjectURL(blob);
+  navigator.serviceWorker.register(url).catch(()=>{});
+}
+</script>
+</body>
+</html>
