@@ -220,17 +220,26 @@ html,body{height:100%;background:var(--bg-deep);color:var(--text-primary);font-f
 
   <div class="view" id="view-settings">
     <div style="padding:20px 16px">
+      <div style="color:var(--text-muted);font-size:12px;margin-bottom:12px">データ移行</div>
+      <div style="background:var(--bg-row);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px">
+        <button onclick="exportData()" style="width:100%;padding:14px 16px;background:none;border:none;border-bottom:1px solid var(--border);color:var(--accent-cyan);font-size:14px;font-family:inherit;cursor:pointer;text-align:left">📤 データをエクスポート（コピー）</button>
+        <button onclick="openImport()" style="width:100%;padding:14px 16px;background:none;border:none;color:var(--accent-teal);font-size:14px;font-family:inherit;cursor:pointer;text-align:left">📥 データをインポート（貼り付け）</button>
+      </div>
       <div style="color:var(--text-muted);font-size:12px;margin-bottom:12px">データ管理</div>
       <div style="background:var(--bg-row);border:1px solid var(--border);border-radius:10px;overflow:hidden">
-        <button onclick="clearAll()" style="width:100%;padding:14px 16px;background:none;border:none;color:var(--negative);font-size:14px;font-family:inherit;cursor:pointer;text-align:left">全データを削除</button>
+        <button onclick="clearAll()" style="width:100%;padding:14px 16px;background:none;border:none;color:var(--negative);font-size:14px;font-family:inherit;cursor:pointer;text-align:left">🗑 全データを削除</button>
+      </div>
+      <div class="info-box">
+        <strong style="color:var(--text-primary)">データ移行の手順</strong><br>
+        ①古いアプリで「エクスポート」→ クリップボードにコピーされる<br>
+        ②新しいアプリで「インポート」→ 貼り付けて読み込む
       </div>
       <div class="info-box">
         <strong style="color:var(--text-primary)">修正ディーツ法について</strong><br>
         入出金の影響を除いた純粋な投資収益率を計算します。<br><br>
-        R = (EMV − BMV − CF合計) ÷ (BMV + Σ(CF × 期間加重))<br><br>
-        月の途中で入出金があった場合でも、その資金が運用に回っていた期間の長さを重み付けして正確なリターンを算出します。
+        R = (EMV − BMV − CF合計) ÷ (BMV + Σ(CF × 期間加重))
       </div>
-      <div style="margin-top:14px;color:var(--text-muted);font-size:11px">資産トラッカー v2.0</div>
+      <div style="margin-top:14px;color:var(--text-muted);font-size:11px">資産トラッカー v2.1</div>
     </div>
   </div>
 
@@ -253,6 +262,19 @@ html,body{height:100%;background:var(--bg-deep);color:var(--text-primary);font-f
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>設定
   </button>
 </nav>
+</div>
+
+<!-- インポートモーダル -->
+<div class="overlay" id="modImport">
+  <div class="modal">
+    <div class="modal-ttl">データをインポート</div>
+    <label>エクスポートしたデータを貼り付け</label>
+    <textarea id="importText" style="width:100%;height:140px;background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:12px;padding:10px 12px;font-family:inherit;outline:none;resize:none;margin-bottom:12px" placeholder="ここにデータを貼り付けてください"></textarea>
+    <div class="act-row">
+      <button class="btn bsec" onclick="closeM('modImport')">キャンセル</button>
+      <button class="btn bpri" onclick="doImport()">インポート</button>
+    </div>
+  </div>
 </div>
 
 <!-- 資産記録モーダル -->
@@ -567,9 +589,17 @@ function drawMonthly(){
   }
 
   document.getElementById('listMonthly').innerHTML=[...mo].reverse().map(m=>{
-    const mCFs=getFlows(m.first.date,m.last.date);
-    const mD=dietz(m.first.amount,m.last.amount,new Date(m.first.date),new Date(m.last.date),mCFs);
-    const mhm=hm[m.last.date]||{};
+    // 前月末基準で修正ディーツ
+    const prevMo=mo.find(x=>x.m===m.m-1)||(m.m===0?null:null);
+    const prevMoRecs=recs.filter(r=>{const d=new Date(r.date);
+      const pyr=m.m===0?yr-1:yr,pmo=m.m===0?11:m.m-1;
+      return d.getFullYear()===pyr&&d.getMonth()===pmo;
+    }).sort((a,b)=>a.date.localeCompare(b.date));
+    const base=prevMoRecs.length>0?prevMoRecs[prevMoRecs.length-1]:m.first;
+    const mCFs=getFlows(base.date,m.last.date);
+    const mD=dietz(base.amount,m.last.amount,new Date(base.date),new Date(m.last.date),mCFs);
+    const mAmt=m.last.amount-base.amount;
+    const mhm=getHighMarks()[m.last.date]||{};
     const b=badgeHtml(mhm);
     const hasCF=cfs.some(c=>{const d=new Date(c.date);return d.getFullYear()===yr&&d.getMonth()===m.m;});
     return `<div class="row">
@@ -577,35 +607,46 @@ function drawMonthly(){
       ${b?`<span class="rbadges">${b}</span>`:''}
       ${hasCF?'<span class="badge" style="background:rgba(0,212,255,0.15);color:var(--accent-cyan);font-size:10px">CF</span>':''}
       <span class="rval">${f(m.last.amount)}円</span>
-      <span class="rch ${cl(mD??0)}">${mD!==null?ps(mD):'--'}</span>
+      <span class="rch ${cl(mD??0)}">${sg(mAmt)}${f(mAmt)}円 ${mD!==null?'('+ps(mD)+')':'--'}</span>
     </div>`;
   }).join('')||'<div class="empty">データがありません</div>';
 }
 
 // ===== YEARLY =====
 function drawYearly(){
-  const yr=curYr;
-  const mo=[];
-  for(let m=0;m<12;m++){
-    const rs=recs.filter(r=>{const d=new Date(r.date);return d.getFullYear()===yr&&d.getMonth()===m;}).sort((a,b)=>a.date.localeCompare(b.date));
-    mo.push(rs.length>0?{m,first:rs[0],last:rs[rs.length-1]}:null);
-  }
-  const valid=mo.filter(Boolean);
-  const yFirst=valid[0],yLast=valid[valid.length-1];
-  let totalD=null;
-  if(yFirst&&yLast){
-    const yCFs=getFlows(yFirst.first.date,yLast.last.date);
-    totalD=dietz(yFirst.first.amount,yLast.last.amount,new Date(yFirst.first.date),new Date(yLast.last.date),yCFs);
+  // 全レコードから年ごとに集計
+  const allYears=[...new Set(recs.map(r=>r.date.slice(0,4)))].sort();
+
+  // 各年の最初・最後のレコードを取得
+  const yearData=allYears.map(yr=>{
+    const yrRecs=recs.filter(r=>r.date.startsWith(yr+'-')).sort((a,b)=>a.date.localeCompare(b.date));
+    return {yr:parseInt(yr),first:yrRecs[0],last:yrRecs[yrRecs.length-1]};
+  });
+
+  // 現在表示中の最新年のサマリー
+  const latestYr=yearData[yearData.length-1];
+  let totalD=null,totalAmt=null;
+  if(latestYr){
+    // 前年末を基準にする
+    const prevYrRecs=recs.filter(r=>r.date.startsWith((latestYr.yr-1)+'-')).sort((a,b)=>a.date.localeCompare(b.date));
+    const base=prevYrRecs.length>0?prevYrRecs[prevYrRecs.length-1]:latestYr.first;
+    const yCFs=getFlows(base.date,latestYr.last.date);
+    totalD=dietz(base.amount,latestYr.last.amount,new Date(base.date),new Date(latestYr.last.date),yCFs);
+    totalAmt=latestYr.last.amount-base.amount;
   }
   const rEl=document.getElementById('yRet');
-  rEl.textContent=totalD!==null?ps(totalD):'--';
+  rEl.textContent=totalD!==null?(sg(totalAmt)+f(totalAmt)+'円 ('+ps(totalD)+')'):'--';
   rEl.className='perf-ret '+(totalD!==null?cl(totalD):'');
-  document.getElementById('yDate').textContent=`※${yr}/12/31現在`;
+  rEl.style.fontSize='16px';
+  document.getElementById('yDate').textContent=latestYr?`※${latestYr.yr}年末現在`:'';
 
-  const vals=mo.map(m=>{
-    if(!m) return null;
-    const mCFs=getFlows(m.first.date,m.last.date);
-    const r=dietz(m.first.amount,m.last.amount,new Date(m.first.date),new Date(m.last.date),mCFs);
+  // グラフ：年ごとの修正ディーツリターン
+  const chartLabels=yearData.map(d=>d.yr+'年');
+  const chartVals=yearData.map(yd=>{
+    const prevYrRecs=recs.filter(r=>r.date.startsWith((yd.yr-1)+'-')).sort((a,b)=>a.date.localeCompare(b.date));
+    const base=prevYrRecs.length>0?prevYrRecs[prevYrRecs.length-1]:yd.first;
+    const yCFs=getFlows(base.date,yd.last.date);
+    const r=dietz(base.amount,yd.last.amount,new Date(base.date),new Date(yd.last.date),yCFs);
     return r!==null?+r.toFixed(2):null;
   });
 
@@ -614,31 +655,34 @@ function drawYearly(){
   chYearly=new Chart(ctx,{
     type:'bar',
     data:{
-      labels:['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
-      datasets:[{data:vals,
-        backgroundColor:vals.map(v=>v===null?'transparent':v>=0?'rgba(0,212,255,0.7)':'rgba(255,107,122,0.7)'),
-        borderColor:vals.map(v=>v===null?'transparent':v>=0?'#00d4ff':'#ff6b7a'),
-        borderWidth:1,borderRadius:3,borderSkipped:false}]},
+      labels:chartLabels,
+      datasets:[{data:chartVals,
+        backgroundColor:chartVals.map(v=>v===null?'transparent':v>=0?'rgba(0,212,255,0.7)':'rgba(255,107,122,0.7)'),
+        borderColor:chartVals.map(v=>v===null?'transparent':v>=0?'#00d4ff':'#ff6b7a'),
+        borderWidth:1,borderRadius:4,borderSkipped:false}]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>ps(c.parsed.y)}}},
       scales:{
-        x:{ticks:{color:'rgba(255,255,255,0.5)',font:{size:10},autoSkip:false},grid:{display:false},border:{display:false}},
-        y:{ticks:{color:'rgba(255,255,255,0.5)',font:{size:10},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'},border:{display:false}}
+        x:{ticks:{color:'rgba(255,255,255,0.5)',font:{size:12}},grid:{display:false},border:{display:false}},
+        y:{ticks:{color:'rgba(255,255,255,0.5)',font:{size:11},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'},border:{display:false}}
       }}
   });
 
-  document.getElementById('listYearly').innerHTML=mo.map((m,i)=>{
-    if(!m) return '';
-    const mCFs=getFlows(m.first.date,m.last.date);
-    const r=dietz(m.first.amount,m.last.amount,new Date(m.first.date),new Date(m.last.date),mCFs);
-    const hasCF=cfs.some(c=>{const d=new Date(c.date);return d.getFullYear()===yr&&d.getMonth()===i;});
+  // リスト：年ごとの資産額と増減
+  document.getElementById('listYearly').innerHTML=[...yearData].reverse().map(yd=>{
+    const prevYrRecs=recs.filter(r=>r.date.startsWith((yd.yr-1)+'-')).sort((a,b)=>a.date.localeCompare(b.date));
+    const base=prevYrRecs.length>0?prevYrRecs[prevYrRecs.length-1]:yd.first;
+    const yCFs=getFlows(base.date,yd.last.date);
+    const r=dietz(base.amount,yd.last.amount,new Date(base.date),new Date(yd.last.date),yCFs);
+    const amt=yd.last.amount-base.amount;
+    const hasCF=cfs.some(c=>c.date.startsWith(yd.yr+'-'));
     return `<div class="row">
-      <span class="rdate">${yr}/${String(i+1).padStart(2,'0')}</span>
+      <span class="rdate">${yd.yr}年</span>
       ${hasCF?'<span class="badge" style="background:rgba(0,212,255,0.15);color:var(--accent-cyan);font-size:10px">CF</span>':''}
-      <span class="rval">${f(m.last.amount)}円</span>
-      <span class="rch ${cl(r??0)}">${r!==null?ps(r):'--'}</span>
+      <span class="rval">${f(yd.last.amount)}円</span>
+      <span class="rch ${cl(r??0)}">${sg(amt)}${f(amt)}円 ${r!==null?'('+ps(r)+')':'--'}</span>
     </div>`;
-  }).reverse().join('')||'<div class="empty">データがありません</div>';
+  }).join('')||'<div class="empty">データがありません</div>';
 }
 
 // ===== CASHFLOW =====
@@ -668,7 +712,7 @@ function openCF(){
   document.getElementById('modCF').classList.add('open');
 }
 function closeM(id){document.getElementById(id).classList.remove('open');}
-['modAsset','modCF'].forEach(id=>{
+['modAsset','modCF','modImport'].forEach(id=>{
   document.getElementById(id).onclick=e=>{if(e.target.id===id)closeM(id);};
 });
 function setCT(t){
@@ -706,6 +750,69 @@ function clearAll(){
   recs=[];cfs=[];
   localStorage.removeItem('assetRecs');localStorage.removeItem('assetCFs');
   draw(curV);
+}
+
+// ===== EXPORT / IMPORT =====
+function exportData(){
+  const data=JSON.stringify({recs,cfs,v:1});
+  // クリップボードにコピー
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(data).then(()=>{
+      alert('コピーしました！\n新しいアプリの設定→インポートに貼り付けてください。');
+    }).catch(()=>fallbackCopy(data));
+  } else {
+    fallbackCopy(data);
+  }
+}
+function fallbackCopy(text){
+  const ta=document.createElement('textarea');
+  ta.value=text;
+  ta.style.position='fixed';ta.style.opacity='0';
+  document.body.appendChild(ta);
+  ta.focus();ta.select();
+  try{
+    document.execCommand('copy');
+    alert('コピーしました！\n新しいアプリの設定→インポートに貼り付けてください。');
+  }catch(e){
+    // コピー失敗時はテキストを見せる
+    document.getElementById('importText').value=text;
+    openImport();
+  }
+  document.body.removeChild(ta);
+}
+function openImport(){
+  document.getElementById('importText').value='';
+  document.getElementById('modImport').classList.add('open');
+}
+function doImport(){
+  const text=document.getElementById('importText').value.trim();
+  if(!text){alert('データを貼り付けてください');return;}
+  try{
+    const data=JSON.parse(text);
+    if(!data.recs||!Array.isArray(data.recs)){throw new Error();}
+    const newRecs=data.recs;
+    const newCFs=data.cfs||[];
+    // 既存データとマージ（日付が重複する場合は新しいデータを優先）
+    const mergedRecs=[...recs];
+    newRecs.forEach(nr=>{
+      const idx=mergedRecs.findIndex(r=>r.date===nr.date);
+      if(idx>=0) mergedRecs[idx]=nr;
+      else mergedRecs.push(nr);
+    });
+    const mergedCFs=[...cfs];
+    newCFs.forEach(nc=>{
+      const exists=mergedCFs.some(c=>c.date===nc.date&&c.amount===nc.amount&&c.type===nc.type);
+      if(!exists) mergedCFs.push(nc);
+    });
+    recs=mergedRecs.sort((a,b)=>a.date.localeCompare(b.date));
+    cfs=mergedCFs.sort((a,b)=>a.date.localeCompare(b.date));
+    persist();
+    closeM('modImport');
+    alert(`インポート完了！\n資産記録：${newRecs.length}件\n入出金：${newCFs.length}件`);
+    draw(curV);
+  }catch(e){
+    alert('データの形式が正しくありません。\nエクスポートしたデータをそのまま貼り付けてください。');
+  }
 }
 
 // ===== INIT =====
