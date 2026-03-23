@@ -457,7 +457,7 @@ function drawDaily(){
     data:{labels:mData.map(r=>parseInt(r.date.slice(8))),
       datasets:[{data:mData.map(r=>+(r.amount/10000).toFixed(2)),
         borderColor:'#00d4ff',backgroundColor:g,borderWidth:2,
-        pointRadius:mData.length>15?0:3,pointHoverRadius:5,pointBackgroundColor:'#00d4ff',fill:true,tension:0.3}]},
+        pointRadius:3,pointHoverRadius:6,pointBackgroundColor:'#00d4ff',fill:true,tension:0.3}]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y+'万円'}}},
       scales:{
@@ -566,7 +566,7 @@ function drawDaily(){
         <span class="rdate">${ds(r.date)}</span>
         ${b?`<span class="rbadges">${b}</span>`:''}
         <span class="rval">${f(r.amount)}円</span>
-        ${ch!==null?`<span class="rch ${cl(ch)}">${sg(ch)}${f(ch)}円 (${pc>=0?'+':''}${pc.toFixed(1)}%)</span>`:'<span class="rch" style="color:var(--text-muted)">--</span>'}
+        ${ch!==null&&pc!==null?`<span class="rch ${cl(ch)}">${sg(ch)}${f(ch)}円 (${pc>=0?'+':''}${pc.toFixed(1)}%)</span>`:ch!==null?`<span class="rch ${cl(ch)}">${sg(ch)}${f(ch)}円</span>`:'<span class="rch" style="color:var(--text-muted)">--</span>'}
       </div>`;
     }).join('');
 }
