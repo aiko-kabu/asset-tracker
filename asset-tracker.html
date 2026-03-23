@@ -476,19 +476,29 @@ function drawDaily(){
   const yrBase=prevYrLast||(yrRecs.length>0?yrRecs[0]:null);
 
   if(last){
-    const dod=prev?last.amount-prev.amount:0;
-    const dodP=prev&&prev.amount?dod/prev.amount*100:0;
+    // 純投資損益を計算するヘルパー
+    // 投資損益 = 資産増減 - その期間の純CF(入金-出金)
+    function pnl(baseAmt, baseDate, endAmt, endDate){
+      const flows=getFlows(baseDate, endDate);
+      const netCF=flows.reduce((s,f)=>s+f.signed,0);
+      return endAmt - baseAmt - netCF;
+    }
+
+    // 前日比：前日から今日の間の入出金を除く
+    const dodRaw=prev?last.amount-prev.amount:0;
+    const dodInv=prev?pnl(prev.amount,prev.date,last.amount,last.date):0;
+    const dodP=prev&&prev.amount?dodInv/prev.amount*100:0;
 
     // 単月比（前月末基準）
     const mBase=prevMoLast;
     const mCFs=mBase?getFlows(mBase.date,last.date):[];
     const mD=mBase?dietz(mBase.amount,last.amount,new Date(mBase.date),new Date(last.date),mCFs):null;
-    const mAmt=mBase?last.amount-mBase.amount:null;
+    const mInv=mBase?pnl(mBase.amount,mBase.date,last.amount,last.date):null;
 
     // 年初来（前年末基準）
     const yCFs=yrBase?getFlows(yrBase.date,last.date):[];
     const yD=yrBase?dietz(yrBase.amount,last.amount,new Date(yrBase.date),new Date(last.date),yCFs):null;
-    const yAmt=yrBase?last.amount-yrBase.amount:null;
+    const yInv=yrBase?pnl(yrBase.amount,yrBase.date,last.amount,last.date):null;
 
     const lhm=hm[last.date]||{};
     const b=badgeHtml(lhm);
@@ -502,9 +512,9 @@ function drawDaily(){
           ${b?`<div class="badges">${b}</div>`:''}
         </div>
         <div class="sum-stats">
-          <div class="stat-row"><span class="slbl">前日比</span><span class="${cl(dod)}">${sg(dod)}${f(dod)}円 (${ps(dodP)})</span></div>
-          <div class="stat-row"><span class="slbl">単月比</span><span class="${cl(mD??0)}">${mAmt!==null?sg(mAmt)+f(mAmt)+'円 ':''} ${mD!==null?'('+ps(mD)+')':'--'}</span></div>
-          <div class="stat-row"><span class="slbl">年初来</span><span class="${cl(yD??0)}">${yAmt!==null?sg(yAmt)+f(yAmt)+'円 ':''} ${yD!==null?'('+ps(yD)+')':'--'}</span></div>
+          <div class="stat-row"><span class="slbl">前日比</span><span class="${cl(dodInv)}">${sg(dodInv)}${f(dodInv)}円 (${ps(dodP)})</span></div>
+          <div class="stat-row"><span class="slbl">月初来</span><span class="${cl(mD??0)}">${mInv!==null?sg(mInv)+f(mInv)+'円':''} ${mD!==null?'('+ps(mD)+')':'--'}</span></div>
+          <div class="stat-row"><span class="slbl">年初来</span><span class="${cl(yD??0)}">${yInv!==null?sg(yInv)+f(yInv)+'円':''} ${yD!==null?'('+ps(yD)+')':'--'}</span></div>
         </div>
       </div>`;
   } else {
@@ -589,8 +599,7 @@ function drawMonthly(){
   }
 
   document.getElementById('listMonthly').innerHTML=[...mo].reverse().map(m=>{
-    // 前月末基準で修正ディーツ
-    const prevMo=mo.find(x=>x.m===m.m-1)||(m.m===0?null:null);
+    // 前月末基準
     const prevMoRecs=recs.filter(r=>{const d=new Date(r.date);
       const pyr=m.m===0?yr-1:yr,pmo=m.m===0?11:m.m-1;
       return d.getFullYear()===pyr&&d.getMonth()===pmo;
@@ -598,7 +607,9 @@ function drawMonthly(){
     const base=prevMoRecs.length>0?prevMoRecs[prevMoRecs.length-1]:m.first;
     const mCFs=getFlows(base.date,m.last.date);
     const mD=dietz(base.amount,m.last.amount,new Date(base.date),new Date(m.last.date),mCFs);
-    const mAmt=m.last.amount-base.amount;
+    // 投資損益 = 資産増減 - 純CF
+    const netCF=mCFs.reduce((s,f)=>s+f.signed,0);
+    const mInv=m.last.amount-base.amount-netCF;
     const mhm=getHighMarks()[m.last.date]||{};
     const b=badgeHtml(mhm);
     const hasCF=cfs.some(c=>{const d=new Date(c.date);return d.getFullYear()===yr&&d.getMonth()===m.m;});
@@ -607,7 +618,7 @@ function drawMonthly(){
       ${b?`<span class="rbadges">${b}</span>`:''}
       ${hasCF?'<span class="badge" style="background:rgba(0,212,255,0.15);color:var(--accent-cyan);font-size:10px">CF</span>':''}
       <span class="rval">${f(m.last.amount)}円</span>
-      <span class="rch ${cl(mD??0)}">${sg(mAmt)}${f(mAmt)}円 ${mD!==null?'('+ps(mD)+')':'--'}</span>
+      <span class="rch ${cl(mD??0)}">${sg(mInv)}${f(mInv)}円 ${mD!==null?'('+ps(mD)+')':'--'}</span>
     </div>`;
   }).join('')||'<div class="empty">データがありません</div>';
 }
@@ -668,19 +679,21 @@ function drawYearly(){
       }}
   });
 
-  // リスト：年ごとの資産額と増減
+  // リスト：年ごとの投資損益
   document.getElementById('listYearly').innerHTML=[...yearData].reverse().map(yd=>{
     const prevYrRecs=recs.filter(r=>r.date.startsWith((yd.yr-1)+'-')).sort((a,b)=>a.date.localeCompare(b.date));
     const base=prevYrRecs.length>0?prevYrRecs[prevYrRecs.length-1]:yd.first;
     const yCFs=getFlows(base.date,yd.last.date);
     const r=dietz(base.amount,yd.last.amount,new Date(base.date),new Date(yd.last.date),yCFs);
-    const amt=yd.last.amount-base.amount;
+    // 投資損益 = 資産増減 - 純CF
+    const netCF=yCFs.reduce((s,f)=>s+f.signed,0);
+    const inv=yd.last.amount-base.amount-netCF;
     const hasCF=cfs.some(c=>c.date.startsWith(yd.yr+'-'));
     return `<div class="row">
       <span class="rdate">${yd.yr}年</span>
       ${hasCF?'<span class="badge" style="background:rgba(0,212,255,0.15);color:var(--accent-cyan);font-size:10px">CF</span>':''}
       <span class="rval">${f(yd.last.amount)}円</span>
-      <span class="rch ${cl(r??0)}">${sg(amt)}${f(amt)}円 ${r!==null?'('+ps(r)+')':'--'}</span>
+      <span class="rch ${cl(r??0)}">${sg(inv)}${f(inv)}円 ${r!==null?'('+ps(r)+')':'--'}</span>
     </div>`;
   }).join('')||'<div class="empty">データがありません</div>';
 }
