@@ -76,7 +76,7 @@ html,body{height:100%;background:var(--bg-list);color:var(--text-dark);font-fami
 .view.active{display:block}
 
 .chart-section{background:linear-gradient(180deg,#4dc8f0 0%,#2fa8e0 40%,#1a8fd0 100%);padding:8px 16px 14px}
-.chart-label{font-size:10px;color:rgba(255,255,255,0.85);margin-bottom:2px}
+.chart-label{font-size:10px;color:rgba(255,255,255,0.85);margin-bottom:2px;font-weight:600}
 .chart-wrap{position:relative;width:100%;height:175px}
 
 .asset-summary{background:linear-gradient(180deg,#1a8fd0,#1278b8);padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.15)}
@@ -87,7 +87,10 @@ html,body{height:100%;background:var(--bg-list);color:var(--text-dark);font-fami
 .sum-val span{font-size:12px;font-weight:400;margin-left:3px;color:rgba(255,255,255,0.8)}
 .sum-stats{display:flex;flex-direction:column;gap:4px;align-items:flex-end;font-size:12px}
 .stat-row{display:flex;gap:8px;align-items:center}
-.slbl{color:rgba(255,255,255,0.65);font-size:11px}
+.slbl{color:rgba(255,255,255,0.7);font-size:11px}
+/* サマリーエリアの増減色は白ベース */
+.sum-stats .pos-color{color:#7fffcf}
+.sum-stats .neg-color{color:#ffaaaa}
 .badges{display:flex;gap:5px;margin-top:4px}
 .badge{font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.04em}
 .mh{background:#7a6010;color:#ffd84d}
@@ -110,7 +113,7 @@ html,body{height:100%;background:var(--bg-list);color:var(--text-dark);font-fami
 .tab-row{display:flex;gap:4px;padding:8px 12px;background:linear-gradient(180deg,#1278b8,#0e68a8);align-items:center}
 .tbtn{flex:1;padding:6px 0;border-radius:6px;border:none;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;background:transparent;color:rgba(255,255,255,0.75);transition:all .15s;text-align:center}
 .tbtn.on{background:rgba(255,255,255,0.25);color:#fff}
-#moLabel{flex:2;text-align:center;font-size:14px;font-weight:500;color:#fff}
+#moLabel{flex:2;text-align:center;font-size:15px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.3)}
 
 .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:linear-gradient(135deg,#5b6dd6,#4a8fd4);border-top:1px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:space-around;z-index:100;padding:0 4px;
 height:calc(var(–nav-h) + env(safe-area-inset-bottom));
@@ -406,16 +409,31 @@ const ds=s=>{const d=new Date(s);return(d.getMonth()+1)+'/'+d.getDate()+'('+DN[d
 const ps=n=>(n>=0?'+':'')+n.toFixed(2)+'%';
 const cl=n=>n>=0?'pos':'neg';
 const sg=n=>n>=0?'+':'';
-const PC='#4dd8a0'; // positive color
-const NC='#ff6b7a'; // negative color
-const cc=n=>n>=0?PC:NC; // color by value
-// colored span helper: cs(value, text)
-const cs=(n,t)=>`<span class="rch" style="color:${cc(n)};min-width:100px;text-align:right;flex-shrink:0;font-size:11px">${t}</span>`;
-// colored stat helper: cst(value, text)
-const cst=(n,t)=>`<span style="color:${cc(n)}">${t}</span>`;
+const PC='#00b87a';
+const NC='#e84040';
+const cc=n=>n>=0?PC:NC;
+const SPC='#7fffcf'; // サマリー背景が青なので明るい緑
+const SNC='#ffaaaa'; // サマリー背景が青なので明るい赤
+const sc=n=>n>=0?SPC:SNC;
+const cs=(n,t)=>`<span style="color:${cc(n)};min-width:100px;text-align:right;flex-shrink:0;font-size:11px">${t}</span>`;
+const cst=(n,t)=>`<span style="color:${sc(n)}">${t}</span>`;
 function badgeHtml(hm){
   return [hm.isMH?'<span class="badge mh">MH</span>':'',hm.isYH?'<span class="badge yh">YH</span>':''].join('');
 }
+
+// ===== SWIPE =====
+(function(){
+  let sx=0,sy=0;
+  document.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+  document.addEventListener('touchend',e=>{
+    if(curV!=='daily') return;
+    const dx=e.changedTouches[0].clientX-sx;
+    const dy=e.changedTouches[0].clientY-sy;
+    if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5){
+      switchMonth(dx<0?1:-1);
+    }
+  },{passive:true});
+})();
 
 // ===== VIEW =====
 function goView(v,btn){
@@ -466,8 +484,8 @@ function drawDaily(){
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y+'万円'}}},
       scales:{
-        x:{ticks:{color:'rgba(255,255,255,0.4)',font:{size:10},maxTicksLimit:10},grid:{color:'rgba(255,255,255,0.05)'},border:{display:false}},
-        y:{ticks:{color:'rgba(255,255,255,0.4)',font:{size:10}},grid:{color:'rgba(255,255,255,0.05)'},border:{display:false}}
+        x:{ticks:{color:'rgba(255,255,255,0.9)',font:{size:10,weight:'bold'}},grid:{color:'rgba(255,255,255,0.1)'},border:{display:false}},
+        y:{ticks:{color:'rgba(255,255,255,0.9)',font:{size:10,weight:'bold'}},grid:{color:'rgba(255,255,255,0.1)'},border:{display:false}}
       }}
   });
 
