@@ -85,9 +85,9 @@ html,body{height:100%;background:var(--bg-list);color:var(--text-dark);font-fami
 .sum-lbl{font-size:11px;color:rgba(255,255,255,0.7)}
 .sum-val{font-size:24px;font-weight:700;letter-spacing:-.02em;color:#fff}
 .sum-val span{font-size:12px;font-weight:400;margin-left:3px;color:rgba(255,255,255,0.8)}
-.sum-stats{display:flex;flex-direction:column;gap:4px;align-items:flex-end;font-size:12px}
+.sum-stats{display:flex;flex-direction:column;gap:5px;align-items:flex-end;font-size:13px}
 .stat-row{display:flex;gap:8px;align-items:center}
-.slbl{color:rgba(255,255,255,0.7);font-size:11px}
+.slbl{color:rgba(255,255,255,0.8);font-size:12px;font-weight:500}
 /* サマリーエリアの増減色は白ベース */
 .sum-stats .pos-color{color:#7fffcf}
 .sum-stats .neg-color{color:#ffaaaa}
@@ -412,11 +412,11 @@ const sg=n=>n>=0?'+':'';
 const PC='#00b87a';
 const NC='#e84040';
 const cc=n=>n>=0?PC:NC;
-const SPC='#7fffcf'; // サマリー背景が青なので明るい緑
-const SNC='#ffaaaa'; // サマリー背景が青なので明るい赤
+const SPC='#ffffff';
+const SNC='#ffffff';
 const sc=n=>n>=0?SPC:SNC;
 const cs=(n,t)=>`<span style="color:${cc(n)};min-width:100px;text-align:right;flex-shrink:0;font-size:11px">${t}</span>`;
-const cst=(n,t)=>`<span style="color:${sc(n)}">${t}</span>`;
+const cst=(n,t)=>`<span style="color:#fff;font-weight:700;font-size:13px">${t}</span>`;
 function badgeHtml(hm){
   return [hm.isMH?'<span class="badge mh">MH</span>':'',hm.isYH?'<span class="badge yh">YH</span>':''].join('');
 }
