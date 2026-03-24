@@ -127,13 +127,15 @@ padding-bottom:env(safe-area-inset-bottom);
 .nbtn svg{width:20px;height:20px}
 .nbtn.on{color:var(–accent-cyan)}
 
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200;align-items:flex-end;justify-content:center}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:200;align-items:flex-end;justify-content:center}
 .overlay.open{display:flex}
-.modal{width:100%;max-width:430px;background:var(–bg-mid);border-radius:16px 16px 0 0;padding:20px 20px 36px;border:1px solid var(–border);border-bottom:none}
+.modal{width:100%;max-width:430px;background:#1a2f5e;border-radius:16px 16px 0 0;padding:20px 20px 36px;border:1px solid rgba(255,255,255,0.2);border-bottom:none}
 .modal-ttl{font-size:15px;font-weight:500;margin-bottom:14px}
-.modal label{display:block;font-size:11px;color:var(–text-muted);margin-bottom:4px}
-.modal input,.modal select{width:100%;background:rgba(255,255,255,0.08);border:1px solid var(–border);border-radius:8px;color:var(–text-primary);font-size:15px;padding:10px 12px;margin-bottom:12px;font-family:inherit;outline:none;-webkit-appearance:none}
-.modal input:focus{border-color:var(–accent-cyan)}
+.modal label{display:block;font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:4px}
+.modal input,.modal select{width:100%;background:#0d1b3e;border:1px solid rgba(255,255,255,0.25);border-radius:8px;color:#ffffff;font-size:15px;padding:10px 12px;margin-bottom:12px;font-family:inherit;outline:none;-webkit-appearance:none}
+.modal input:focus{border-color:#00d4ff}
+.modal textarea{width:100%;background:#0d1b3e;border:1px solid rgba(255,255,255,0.25);border-radius:8px;color:#ffffff;font-size:12px;padding:10px 12px;margin-bottom:12px;font-family:inherit;outline:none;resize:none}
+.modal textarea:focus{border-color:#00d4ff}
 .type-row{display:flex;gap:6px;margin-bottom:12px}
 .ttype{flex:1;padding:9px;border-radius:8px;border:1px solid var(–border);background:transparent;color:var(–text-muted);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s}
 .ttype.tin{background:rgba(0,191,160,0.2);border-color:var(–accent-teal);color:var(–accent-teal)}
