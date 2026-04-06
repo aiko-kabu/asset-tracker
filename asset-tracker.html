@@ -470,21 +470,31 @@ function drawDaily(){
 
   const hm=getHighMarks();
 
-  // chart
+  // chart：その月の全日をX軸に並べ、データがない日はnull
+  const daysInMonth=new Date(yr,mo+1,0).getDate();
+  const allDays=Array.from({length:daysInMonth},(_,i)=>i+1);
+  const dataMap={};
+  mData.forEach(r=>{dataMap[parseInt(r.date.slice(8))]=+(r.amount/10000).toFixed(2);});
+  const chartData=allDays.map(d=>dataMap[d]??null);
+
   if(chDaily) chDaily.destroy();
   const ctx=document.getElementById('cDaily').getContext('2d');
   const g=ctx.createLinearGradient(0,0,0,175);
   g.addColorStop(0,'rgba(0,212,255,0.35)');g.addColorStop(1,'rgba(0,212,255,0)');
   chDaily=new Chart(ctx,{
     type:'line',
-    data:{labels:mData.map(r=>parseInt(r.date.slice(8))),
-      datasets:[{data:mData.map(r=>+(r.amount/10000).toFixed(2)),
+    data:{labels:allDays,
+      datasets:[{data:chartData,
         borderColor:'#00d4ff',backgroundColor:g,borderWidth:2,
-        pointRadius:3,pointHoverRadius:6,pointBackgroundColor:'#00d4ff',fill:true,tension:0.3}]},
+        pointRadius:d=>dataMap[allDays[d.dataIndex]]!==undefined?3:0,
+        pointHoverRadius:6,pointBackgroundColor:'#00d4ff',
+        fill:true,tension:0.3,spanGaps:false}]},
     options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y+'万円'}}},
+      plugins:{legend:{display:false},tooltip:{
+        filter:i=>i.parsed.y!==null,
+        callbacks:{label:c=>c.parsed.y+'万円'}}},
       scales:{
-        x:{ticks:{color:'rgba(255,255,255,0.9)',font:{size:10,weight:'bold'}},grid:{color:'rgba(255,255,255,0.1)'},border:{display:false}},
+        x:{ticks:{color:'rgba(255,255,255,0.9)',font:{size:10,weight:'bold'},maxTicksLimit:12},grid:{color:'rgba(255,255,255,0.1)'},border:{display:false}},
         y:{ticks:{color:'rgba(255,255,255,0.9)',font:{size:10,weight:'bold'}},grid:{color:'rgba(255,255,255,0.1)'},border:{display:false}}
       }}
   });
