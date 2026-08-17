@@ -672,8 +672,6 @@ function drawMonthly(){
     const hasCF=cfs.some(c=>{const d=new Date(c.date);return d.getFullYear()===yr&&d.getMonth()===m.m;});
     return `<div class="row">
       <span class="rdate">${yr}/${String(m.m+1).padStart(2,'0')}</span>
-      ${b?`<span class="rbadges">${b}</span>`:''}
-      ${hasCF?'<span class="badge" style="background:rgba(0,212,255,0.15);color:var(--accent-cyan);font-size:10px">CF</span>':''}
       <span class="rval">${f(m.last.amount)}円</span>
       ${cs(mInv,sg(mInv)+f(mInv)+'円 '+(mD!==null?'('+ps(mD)+')':'--'))}
     </div>`;
@@ -749,7 +747,6 @@ function drawYearly(){
     const hasCF=cfs.some(c=>c.date.startsWith(yd.yr+'-'));
     return `<div class="row">
       <span class="rdate">${yd.yr}年</span>
-      ${hasCF?'<span class="badge" style="background:rgba(0,212,255,0.15);color:var(--accent-cyan);font-size:10px">CF</span>':''}
       <span class="rval">${f(yd.last.amount)}円</span>
       ${cs(inv,sg(inv)+f(inv)+'円 '+(r!==null?'('+ps(r)+')':'--'))}
     </div>`;
